@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageHero } from "@/components/PageHero";
 import { SectionKicker } from "@/components/SectionKicker";
 import { TicketButton } from "@/components/TicketButton";
-import { NewsletterForm } from "@/components/NewsletterForm";
+import { ContactForm } from "@/components/ContactForm";
 import { SocialFollow } from "@/components/SocialFollow";
 
 export const metadata: Metadata = {
@@ -51,8 +51,8 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <SectionKicker index="No. 02" label="Get Connected" />
-              <NewsletterForm />
+              <SectionKicker index="No. 02" label="Send a Message" />
+              <ContactForm />
             </div>
           </div>
         </section>
