@@ -27,50 +27,69 @@ export function VideoEmbed({
     };
 
     let retryTimer: ReturnType<typeof setInterval> | null = null;
+    let attempts = 0;
+    let visible = false;
 
-    const start = () => {
-      send("playVideo");
-      // Autoplay is only allowed muted; once playback has actually
-      // started, raising the volume is a mid-playback change, not a
-      // new audible autoplay, so browsers let it through.
-      send("unMute");
-      send("setVolume", [50]);
-    };
-
-    const stop = () => {
+    const clearRetry = () => {
       if (retryTimer) {
         clearInterval(retryTimer);
         retryTimer = null;
       }
+    };
+
+    const nudge = () => {
+      send("playVideo");
+      // The very first command is play-only: pairing it with an
+      // immediate unMute has been the likely cause of autoplay
+      // sometimes silently failing on slower connections. From the
+      // second nudge onward it's a safe mid-playback volume change.
+      if (attempts > 0) {
+        send("unMute");
+        send("setVolume", [50]);
+      }
+      attempts += 1;
+    };
+
+    const start = () => {
+      if (retryTimer) return; // already retrying
+      visible = true;
+      attempts = 0;
+      nudge();
+      // The player's readiness time is network-dependent and can run
+      // well past a couple seconds on a real connection -- keep
+      // nudging generously so it reliably catches on instead of
+      // giving up early. Capped so a visitor who manually pauses
+      // later isn't fought forever.
+      retryTimer = setInterval(() => {
+        nudge();
+        if (attempts >= 30) clearRetry();
+      }, 500);
+    };
+
+    const stop = () => {
+      visible = false;
+      clearRetry();
       send("pauseVideo");
     };
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // The player may not have finished loading yet (most likely
-          // right on page load), so the first command can arrive before
-          // it's listening. Resend for a couple seconds until it sticks.
-          let attempts = 0;
-          start();
-          retryTimer = setInterval(() => {
-            attempts += 1;
-            start();
-            if (attempts >= 5 && retryTimer) {
-              clearInterval(retryTimer);
-              retryTimer = null;
-            }
-          }, 500);
-        } else {
-          stop();
-        }
-      },
+      ([entry]) => (entry.isIntersecting ? start() : stop()),
       { threshold: 0.5 },
     );
     observer.observe(wrapper);
+
+    // Belt-and-suspenders: if the hero is already in view at mount,
+    // the iframe's own load can land before or after the observer's
+    // first callback -- nudge again once it fires either way.
+    const onLoad = () => {
+      if (visible) nudge();
+    };
+    iframe.addEventListener("load", onLoad);
+
     return () => {
       observer.disconnect();
-      if (retryTimer) clearInterval(retryTimer);
+      iframe.removeEventListener("load", onLoad);
+      clearRetry();
     };
   }, []);
 
