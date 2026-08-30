@@ -290,7 +290,7 @@ export default function ProgramsPage() {
               the newsletter so you know the moment the window opens.
             </p>
             <div className="mt-8 flex justify-center">
-              <TicketButton href="https://docs.google.com/forms/d/e/1FAIpQLSeuS4AVbF-WVUHYERfrtTmGfjpyO87WiZs8Fq7IaNcdUti6Kw/viewform">
+              <TicketButton href="/get-involved#intake">
                 Open the Intake Form
               </TicketButton>
             </div>

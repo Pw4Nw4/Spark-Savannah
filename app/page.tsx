@@ -341,7 +341,7 @@ export default function Home() {
               takes five minutes and it&apos;s how cohort selection begins.
             </p>
             <div className="mt-8">
-              <TicketButton href="https://docs.google.com/forms/d/e/1FAIpQLSeuS4AVbF-WVUHYERfrtTmGfjpyO87WiZs8Fq7IaNcdUti6Kw/viewform">
+              <TicketButton href="/get-involved#intake">
                 Open the Intake Form
               </TicketButton>
             </div>
