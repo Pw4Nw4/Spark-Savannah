@@ -53,31 +53,54 @@ export function VideoEmbed({
       );
     };
 
-    const unmuteToHalf = () => {
-      send("unMute");
-      send("setVolume", [50]);
+    // The player may not have loaded yet when this fires (most likely
+    // right on page load, or on an early click before it's finished
+    // initializing), so a single unmute attempt can silently land on
+    // nothing. Resend for a couple seconds until it sticks.
+    let unmuteRetries: ReturnType<typeof setTimeout> | null = null;
+    const unmuteWithRetry = () => {
+      if (unmuteRetries) clearTimeout(unmuteRetries);
+      let tries = 0;
+      const tick = () => {
+        send("unMute");
+        send("setVolume", [50]);
+        tries += 1;
+        if (tries < 6) unmuteRetries = setTimeout(tick, 400);
+      };
+      tick();
     };
 
     let visible = false;
+    let hasBeenVisible = false;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         visible = entry.isIntersecting;
-        send(visible ? "playVideo" : "pauseVideo");
-        if (visible && unlocked) unmuteToHalf();
+        if (visible) {
+          hasBeenVisible = true;
+          send("playVideo");
+          if (unlocked) unmuteWithRetry();
+        } else if (hasBeenVisible) {
+          // Only pause once it's confirmed to have actually started --
+          // pausing before that risks catching the video mid-startup and
+          // silently cancelling its native autoplay (this is what made
+          // it play only sometimes).
+          send("pauseVideo");
+        }
       },
-      { threshold: 0.5 },
+      { threshold: 0.4 },
     );
     observer.observe(wrapper);
 
     const onFirstInteraction = () => {
-      if (visible) unmuteToHalf();
+      if (visible) unmuteWithRetry();
     };
     onUnlock.add(onFirstInteraction);
 
     return () => {
       observer.disconnect();
       onUnlock.delete(onFirstInteraction);
+      if (unmuteRetries) clearTimeout(unmuteRetries);
     };
   }, []);
 
